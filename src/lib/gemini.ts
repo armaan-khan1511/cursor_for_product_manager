@@ -10,12 +10,11 @@ if (!apiKey) {
 
 export const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
-// Priority list of Gemini models — automatically cycles if a model hits high demand or rate limits
+// Priority list of official Gemini models — automatically cycles if a model hits high demand, rate limits, or 404
 export const GEMINI_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
   "gemini-1.5-flash",
-  "gemini-flash-latest",
+  "gemini-1.5-flash-8b",
+  "gemini-2.0-flash-exp",
   "gemini-1.5-pro",
 ];
 
@@ -60,22 +59,25 @@ export async function generateStructuredJSON<T>(params: {
       const errMsg = error instanceof Error ? error.message : String(error);
       lastError = error instanceof Error ? error : new Error(errMsg);
 
-      const isTransient =
+      const isRetryable =
         errMsg.includes("high demand") ||
         errMsg.includes("429") ||
         errMsg.includes("503") ||
         errMsg.includes("500") ||
+        errMsg.includes("404") ||
+        errMsg.includes("NOT_FOUND") ||
+        errMsg.includes("not found") ||
         errMsg.includes("RESOURCE_EXHAUSTED") ||
         errMsg.includes("UNAVAILABLE") ||
         errMsg.includes("overloaded");
 
-      if (isTransient) {
-        console.warn(`[gemini] Model '${model}' experienced transient issue (${errMsg}). Trying fallback model...`);
-        await new Promise((resolve) => setTimeout(resolve, 800));
+      if (isRetryable) {
+        console.warn(`[gemini] Model '${model}' failed (${errMsg}). Trying fallback model...`);
+        await new Promise((resolve) => setTimeout(resolve, 500));
         continue;
       }
 
-      // If non-transient (e.g. invalid API key), rethrow immediately
+      // If non-retryable (e.g. invalid API key), rethrow immediately
       throw lastError;
     }
   }
