@@ -10,13 +10,20 @@ if (!apiKey) {
 
 export const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
-// Centralized so a future model bump (or Gemini -> another provider swap)
-// only happens in one place.
-export const GEMINI_MODEL = "gemini-flash-latest";
+// Priority list of Gemini models — automatically cycles if a model hits high demand or rate limits
+export const GEMINI_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash",
+  "gemini-flash-latest",
+  "gemini-1.5-pro",
+];
+
+export const GEMINI_MODEL = GEMINI_MODELS[0];
 
 /**
  * Calls Gemini and forces a JSON response that matches the given schema.
- * Throws if the model key is missing or the response can't be parsed.
+ * Automatically retries with fallback models if a model experiences high demand or transient errors.
  */
 export async function generateStructuredJSON<T>(params: {
   prompt: string;
@@ -26,23 +33,52 @@ export async function generateStructuredJSON<T>(params: {
     throw new Error("GEMINI_API_KEY is not configured on the server.");
   }
 
-  const response = await ai.models.generateContent({
-    model: GEMINI_MODEL,
-    contents: params.prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: params.schema,
-    },
-  });
+  let lastError: Error | null = null;
 
-  const text = response.text;
-  if (!text) {
-    throw new Error("Gemini returned an empty response.");
+  for (const model of GEMINI_MODELS) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: params.prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: params.schema,
+        },
+      });
+
+      const text = response.text;
+      if (!text) {
+        throw new Error("Gemini returned an empty response.");
+      }
+
+      try {
+        return JSON.parse(text) as T;
+      } catch {
+        throw new Error("Gemini returned malformed JSON.");
+      }
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      lastError = error instanceof Error ? error : new Error(errMsg);
+
+      const isTransient =
+        errMsg.includes("high demand") ||
+        errMsg.includes("429") ||
+        errMsg.includes("503") ||
+        errMsg.includes("500") ||
+        errMsg.includes("RESOURCE_EXHAUSTED") ||
+        errMsg.includes("UNAVAILABLE") ||
+        errMsg.includes("overloaded");
+
+      if (isTransient) {
+        console.warn(`[gemini] Model '${model}' experienced transient issue (${errMsg}). Trying fallback model...`);
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        continue;
+      }
+
+      // If non-transient (e.g. invalid API key), rethrow immediately
+      throw lastError;
+    }
   }
 
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error("Gemini returned malformed JSON.");
-  }
+  throw lastError || new Error("Gemini AI is currently experiencing high demand across models. Please try again shortly.");
 }
