@@ -12,9 +12,10 @@ export const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
 // Priority list of official Gemini models — automatically cycles if a model hits high demand, rate limits, or 404
 export const GEMINI_MODELS = [
+  "gemini-3.5-flash",
+  "gemini-2.0-flash",
   "gemini-1.5-flash",
   "gemini-1.5-flash-8b",
-  "gemini-2.0-flash-exp",
   "gemini-1.5-pro",
 ];
 
