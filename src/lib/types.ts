@@ -24,7 +24,7 @@ export interface Specification {
   implementation_notes: string;
 }
 
-export type ExportFormat = "markdown" | "claude-code" | "cursor" | "github" | "linear";
+export type ExportFormat = "markdown" | "claude-code" | "cursor" | "chatgpt" | "github" | "linear";
 
 export interface ExportRequest {
   spec: Specification;
@@ -34,4 +34,6 @@ export interface ExportRequest {
 export interface ExportResponse {
   content: string;
   format: ExportFormat;
+  redirectUrl?: string;
+  filename?: string;
 }

@@ -1,0 +1,8 @@
+id,source,user_role,priority,feedback,created_at
+101,Zendesk Ticket,VP of Finance,High,"Can't export my project data as CSV. This is blocking our quarterly compliance report and our leadership team needs it ASAP!",2026-08-01
+102,Intercom Chat,Mobile User,Medium,"Export button is missing entirely on the iOS mobile app layout when using portrait mode.",2026-08-01
+103,Feature Request,Data Analyst,Low,"Would be nice to schedule automatic weekly CSV exports directly to AWS S3 or via email.",2026-08-02
+104,Customer Review,Engineering Lead,High,"Dashboard takes over 8 seconds to render when we have 50+ team members in the workspace. Needs pagination or caching urgently.",2026-08-02
+105,Sales Call Notes,IT Admin,High,"Please add SAML SSO / Okta integration for enterprise user login. Our security team requires this for compliance before renewal.",2026-08-03
+106,App Review,Designer,Low,"Dark mode contrast on theme selection buttons makes inactive tabs hard to distinguish in low-light environments.",2026-08-03
+107,Support Ticket,Product Manager,Medium,"Bulk feedback import throws error if any cell contains special characters or leading bullet points.",2026-08-03

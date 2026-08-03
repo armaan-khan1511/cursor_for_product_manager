@@ -37,23 +37,31 @@ export const ANALYZE_SCHEMA = {
   required: ["themes"],
 };
 
-export function buildAnalyzePrompt(feedbackItems: string[]): string {
-  const numbered = feedbackItems.map((item, i) => `${i + 1}. ${item}`).join("\n");
+export function buildAnalyzePrompt(feedbackInput: string | string[]): string {
+  const formattedFeedback = Array.isArray(feedbackInput)
+    ? feedbackInput.map((item, i) => `${i + 1}. ${item}`).join("\n")
+    : feedbackInput;
 
   return `You are a senior product manager triaging raw customer feedback for an engineering team.
 
-Below is a batch of feedback items (support tickets, reviews, interview notes, feature requests). Your job:
+Below is a batch of raw customer feedback inputs (which may include support tickets, emails, user reviews, interview notes, bullet points, or multiple items submitted at once).
 
-1. Group items that describe the same underlying problem into themes. Don't over-split — merge near-duplicates.
-2. For each theme, estimate priority (high/medium/low) based on apparent frequency, severity, and business impact as implied by the language used (words like "blocker", "can't use", "losing customers" imply high priority; cosmetic or "would be nice" language implies low).
-3. Order themes by priority, highest first.
-4. Give a confidence_score (0-1) reflecting how clearly the items in that theme actually belong together.
-5. Pull 1-3 short representative quotes per theme directly from the input.
+Your job:
+1. Parse and identify all distinct feedback points/requests contained in the input, even if multiple feedback items are pasted together, spanning multiple lines, or formatted as support tickets/emails/lists.
+2. Group and categorise items that describe the same underlying problem or feature request into overarching themes. Don't over-split — merge near-duplicates and related issues.
+3. Prioritise each theme as "high", "medium", or "low" based on apparent frequency, severity, and business/user impact:
+   - High: Critical blockers, data loss, security/access issues, core flow failures, frequent pain points.
+   - Medium: Significant usability issues, missing standard features, workarounds required.
+   - Low: Minor cosmetic suggestions, nice-to-have enhancements, low-frequency edge cases.
+4. Order themes by priority (highest priority first).
+5. Provide a confidence_score (0-1) reflecting how strongly the grouped items belong together.
+6. Calculate feedback_count as the total number of distinct input reports/tickets/items that contribute to this theme.
+7. Pull 1-3 short representative verbatim or near-verbatim quotes per theme directly from the raw input text.
 
 Do not invent feedback that isn't present in the input. If the input only supports one or two themes, return only that many — don't pad the list.
 
-Feedback items:
-${numbered}`;
+Raw Customer Feedback Input:
+${formattedFeedback}`;
 }
 
 export const GENERATE_TASK_SCHEMA = {

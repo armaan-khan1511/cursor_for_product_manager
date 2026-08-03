@@ -44,8 +44,6 @@ Notes / open questions to flag if they affect your approach: ${spec.implementati
 }
 
 function toCursorPrompt(spec: Specification): string {
-  // Cursor works well with a tighter, task-first prompt referencing the
-  // codebase directly, so this trims the framing Claude Code gets.
   return `Task: ${spec.title}
 
 ${spec.description}
@@ -57,6 +55,25 @@ Must satisfy:
 ${spec.acceptance_criteria.map((c) => `- ${c}`).join("\n")}
 
 Watch for: ${spec.edge_cases.join("; ")}`;
+}
+
+function toChatGPTPrompt(spec: Specification): string {
+  return `Act as a senior software engineer. Please implement the following task step by step:
+
+Task Title: ${spec.title}
+Problem Statement: ${spec.problem_statement}
+
+Description:
+${spec.description}
+
+Implementation Tasks:
+${spec.technical_tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")}
+
+Acceptance Criteria:
+${spec.acceptance_criteria.map((c) => `- ${c}`).join("\n")}
+
+Edge Cases to Handle:
+${spec.edge_cases.map((e) => `- ${e}`).join("\n")}`;
 }
 
 function toGithubIssue(spec: Specification): string {
@@ -101,6 +118,7 @@ const formatters: Record<ExportFormat, (spec: Specification) => string> = {
   markdown: toMarkdown,
   "claude-code": toClaudeCodePrompt,
   cursor: toCursorPrompt,
+  chatgpt: toChatGPTPrompt,
   github: toGithubIssue,
   linear: toLinearIssue,
 };
@@ -116,6 +134,7 @@ export async function POST(req: Request) {
       );
     }
 
+    const spec = body.spec as Specification;
     const formatter = formatters[body.format];
     if (!formatter) {
       return NextResponse.json(
@@ -124,8 +143,43 @@ export async function POST(req: Request) {
       );
     }
 
-    const content = formatter(body.spec as Specification);
-    return NextResponse.json({ content, format: body.format });
+    const content = formatter(spec);
+
+    let redirectUrl: string | undefined;
+    let filename = `${spec.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.md`;
+
+    const encodedPrompt = encodeURIComponent(content);
+    const encodedTitle = encodeURIComponent(spec.title);
+
+    switch (body.format) {
+      case "claude-code":
+        redirectUrl = `https://claude.ai/new?q=${encodedPrompt}`;
+        filename = `claude-prompt-${spec.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.md`;
+        break;
+      case "cursor":
+        redirectUrl = `cursor://chat?prompt=${encodedPrompt}`;
+        filename = `.cursorrules`;
+        break;
+      case "chatgpt":
+        redirectUrl = `https://chatgpt.com/?q=${encodedPrompt}`;
+        filename = `chatgpt-prompt-${spec.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.md`;
+        break;
+      case "github":
+        redirectUrl = `https://github.com/new?title=${encodedTitle}&body=${encodedPrompt}`;
+        filename = `github-issue.md`;
+        break;
+      case "linear":
+        redirectUrl = `https://linear.app/new?title=${encodedTitle}&description=${encodedPrompt}`;
+        filename = `linear-issue.md`;
+        break;
+    }
+
+    return NextResponse.json({
+      content,
+      format: body.format,
+      redirectUrl,
+      filename,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("[export] error:", message);

@@ -35,9 +35,11 @@ export function ThemeList({
               <span className="text-sm font-medium text-zinc-100">{theme.title}</span>
             </div>
             <span
-              className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${priorityStyles[theme.priority]}`}
+              className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                priorityStyles[(theme.priority || "medium").toString().toLowerCase() as keyof typeof priorityStyles] || priorityStyles.medium
+              }`}
             >
-              {theme.priority}
+              {theme.priority || "medium"}
             </span>
           </div>
           <p className="mt-1.5 text-xs text-zinc-500 leading-relaxed">{theme.summary}</p>
