@@ -12,14 +12,30 @@ export const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
 // Priority list of official Gemini models — automatically cycles if a model hits high demand, rate limits, or 404
 export const GEMINI_MODELS = [
-  "gemini-3.5-flash",
+  "gemini-flash-latest",
+  "gemini-1.5-flash-latest",
   "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-8b",
-  "gemini-1.5-pro",
+  "gemini-pro-latest",
 ];
 
 export const GEMINI_MODEL = GEMINI_MODELS[0];
+
+function parseJSONFromText<T>(text: string): T {
+  let cleaned = text.trim();
+  // Strip markdown code fences (```json ... ``` or ``` ...)
+  if (cleaned.startsWith("```")) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+  }
+
+  // Locate the outermost JSON object bounds
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start !== -1 && end !== -1 && end > start) {
+    cleaned = cleaned.slice(start, end + 1);
+  }
+
+  return JSON.parse(cleaned) as T;
+}
 
 /**
  * Calls Gemini and forces a JSON response that matches the given schema.
@@ -51,11 +67,7 @@ export async function generateStructuredJSON<T>(params: {
         throw new Error("Gemini returned an empty response.");
       }
 
-      try {
-        return JSON.parse(text) as T;
-      } catch {
-        throw new Error("Gemini returned malformed JSON.");
-      }
+      return parseJSONFromText<T>(text);
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       lastError = error instanceof Error ? error : new Error(errMsg);
