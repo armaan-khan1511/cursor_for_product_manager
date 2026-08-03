@@ -11,13 +11,13 @@ import type { Specification, Theme } from "@/lib/types";
 
 type Stage = "input" | "themes" | "spec";
 
-export function Dashboard({ userEmail }: { userEmail: string }) {
+export function Dashboard({ userEmail }: { userEmail?: string }) {
   const router = useRouter();
   const supabase = createClient();
 
   async function handleSignOut() {
     await supabase.auth.signOut();
-    router.push("/login");
+    router.push("/");
     router.refresh();
   }
 
@@ -98,13 +98,21 @@ export function Dashboard({ userEmail }: { userEmail: string }) {
               ))}
             </nav>
             <div className="flex items-center gap-3 border-l border-zinc-800 pl-6">
-              <span className="text-xs text-zinc-500">{userEmail}</span>
-              <button
-                onClick={handleSignOut}
-                className="text-xs font-medium text-zinc-500 hover:text-zinc-300"
-              >
-                Sign out
-              </button>
+              {userEmail ? (
+                <>
+                  <span className="text-xs text-zinc-500">{userEmail}</span>
+                  <button
+                    onClick={handleSignOut}
+                    className="text-xs font-medium text-zinc-500 hover:text-zinc-300"
+                  >
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <span className="rounded-full bg-zinc-900 border border-zinc-800 px-2.5 py-0.5 text-xs text-zinc-400">
+                  Public Mode
+                </span>
+              )}
             </div>
           </div>
         </div>

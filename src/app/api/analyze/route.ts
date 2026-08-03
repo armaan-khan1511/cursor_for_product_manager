@@ -8,9 +8,6 @@ import type { AnalyzeResponse, Priority } from "@/lib/types";
 export async function POST(req: Request) {
   try {
     const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Sign in required." }, { status: 401 });
-    }
 
     const body = await req.json();
     const feedback: unknown = body?.feedback;
@@ -87,7 +84,7 @@ export async function POST(req: Request) {
     if (supabase) {
       const { data: batch, error: batchError } = await supabase
         .from("feedback_batches")
-        .insert({ raw_items: items, user_id: user.id })
+        .insert({ raw_items: items, user_id: user?.id ?? null })
         .select("id")
         .single();
 
@@ -98,7 +95,7 @@ export async function POST(req: Request) {
         const { error: analysesError } = await supabase.from("analyses").insert(
           sanitizedResult.themes.map((theme) => ({
             batch_id: batchId,
-            user_id: user.id,
+            user_id: user?.id ?? null,
             theme_id: theme.id,
             title: theme.title,
             summary: theme.summary,

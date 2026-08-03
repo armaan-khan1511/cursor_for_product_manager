@@ -8,9 +8,6 @@ import type { Specification, Theme } from "@/lib/types";
 export async function POST(req: Request) {
   try {
     const user = await getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Sign in required." }, { status: 401 });
-    }
 
     const body = await req.json();
     const theme: Partial<Theme> | undefined = body?.theme;
@@ -33,21 +30,23 @@ export async function POST(req: Request) {
 
     const supabase = getServerSupabase();
     if (supabase && theme.id) {
-      // Best-effort: look up the most recent stored analysis row for this
-      // theme_id so the spec can be linked to it. If nothing matches (e.g.
-      // Supabase wasn't configured when /api/analyze ran), skip linking.
-      const { data: analysisRow } = await supabase
+      let query = supabase
         .from("analyses")
         .select("id")
-        .eq("theme_id", theme.id)
-        .eq("user_id", user.id)
+        .eq("theme_id", theme.id);
+
+      if (user?.id) {
+        query = query.eq("user_id", user.id);
+      }
+
+      const { data: analysisRow } = await query
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
       const { error: specError } = await supabase.from("specifications").insert({
         analysis_id: analysisRow?.id ?? null,
-        user_id: user.id,
+        user_id: user?.id ?? null,
         title: spec.title,
         problem_statement: spec.problem_statement,
         description: spec.description,

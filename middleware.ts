@@ -27,20 +27,8 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const url = request.nextUrl.clone();
-  const isLoginPage = url.pathname.startsWith("/login");
-  const isApiRoute = url.pathname.startsWith("/api");
-
-  if (!user && !isLoginPage && !isApiRoute) {
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
-  }
-
-  if (user && isLoginPage) {
+  if (url.pathname.startsWith("/login")) {
     url.pathname = "/";
     return NextResponse.redirect(url);
   }
