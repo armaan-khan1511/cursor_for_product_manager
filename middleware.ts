@@ -27,9 +27,23 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Touching getUser() here is what actually refreshes the session token
-  // before it expires — skipping this eventually logs everyone out silently.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const url = request.nextUrl.clone();
+  const isLoginPage = url.pathname.startsWith("/login");
+  const isApiRoute = url.pathname.startsWith("/api");
+
+  if (!user && !isLoginPage && !isApiRoute) {
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  if (user && isLoginPage) {
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
 
   return response;
 }

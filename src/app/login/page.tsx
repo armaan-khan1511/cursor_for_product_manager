@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,13 +13,23 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
 
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data }) => {
+      if (data?.session) {
+        router.push("/");
+      }
+    });
+  }, [router]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setInfo(null);
     setLoading(true);
 
-    const { error } =
+    const supabase = createClient();
+    const { data, error } =
       mode === "sign-in"
         ? await supabase.auth.signInWithPassword({ email, password })
         : await supabase.auth.signUp({ email, password });
@@ -28,12 +37,28 @@ export default function LoginPage() {
     setLoading(false);
 
     if (error) {
-      setError(error.message);
+      const msg = error.message.toLowerCase();
+      if (msg.includes("rate limit")) {
+        setError(
+          "Supabase email rate limit exceeded. Fix: Go to Supabase Dashboard → Authentication → Providers → Email, turn OFF 'Confirm email', or wait a few minutes."
+        );
+      } else if (msg.includes("invalid login credentials")) {
+        setError(
+          "Invalid email or password. If you don't have an account yet, click 'Need an account? Sign up' below."
+        );
+      } else {
+        setError(error.message);
+      }
+      return;
+    }
+
+    if (data?.session) {
+      router.push("/");
+      router.refresh();
       return;
     }
 
     if (mode === "sign-up") {
-      // If "Confirm email" is still on in Supabase, there's no session yet.
       setInfo("Check your email to confirm your account, then sign in.");
       return;
     }
